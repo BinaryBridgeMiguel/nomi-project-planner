@@ -1,0 +1,673 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Nomi Planner — Project Planning</title>
+<style>
+:root {
+  --primary: #7C5CFC;
+  --primary-light: #EDE9FE;
+  --primary-dark: #5B3FD4;
+  --accent: #F59E0B;
+  --danger: #EF4444;
+  --success: #10B981;
+  --bg: #F8F7FC;
+  --card: #FFFFFF;
+  --text: #1E1B3A;
+  --text-light: #6B7280;
+  --border: #E5E7EB;
+  --shadow: 0 1px 3px rgba(0,0,0,.08), 0 1px 2px rgba(0,0,0,.06);
+  --shadow-lg: 0 10px 25px rgba(124,92,252,.12);
+  --radius: 12px;
+  --radius-sm: 8px;
+}
+* { margin:0; padding:0; box-sizing:border-box; }
+body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; background:var(--bg); color:var(--text); min-height:100vh; }
+button { cursor:pointer; font-family:inherit; }
+input,select,textarea { font-family:inherit; }
+
+/* NAV */
+.nav { background:var(--card); border-bottom:1px solid var(--border); padding:0 24px; display:flex; align-items:center; height:60px; position:sticky; top:0; z-index:100; box-shadow:var(--shadow); }
+.nav-logo { font-size:20px; font-weight:800; color:var(--primary); margin-right:32px; display:flex; align-items:center; gap:8px; }
+.nav-logo span { font-size:24px; }
+.nav-tabs { display:flex; gap:4px; flex:1; }
+.nav-tab { padding:8px 16px; border-radius:var(--radius-sm); border:none; background:transparent; font-size:14px; font-weight:500; color:var(--text-light); transition:.2s; }
+.nav-tab:hover { background:var(--primary-light); color:var(--primary); }
+.nav-tab.active { background:var(--primary); color:#fff; }
+.nav-actions { display:flex; gap:8px; }
+.hamburger { display:none; background:none; border:none; font-size:24px; color:var(--text); }
+
+/* BUTTONS */
+.btn { padding:8px 16px; border-radius:var(--radius-sm); border:none; font-size:14px; font-weight:600; transition:.2s; display:inline-flex; align-items:center; gap:6px; }
+.btn-primary { background:var(--primary); color:#fff; }
+.btn-primary:hover { background:var(--primary-dark); transform:translateY(-1px); box-shadow:var(--shadow-lg); }
+.btn-secondary { background:var(--primary-light); color:var(--primary); }
+.btn-danger { background:#FEE2E2; color:var(--danger); }
+.btn-sm { padding:5px 10px; font-size:12px; }
+
+/* MAIN */
+.main { padding:24px; max-width:1400px; margin:0 auto; }
+
+/* VIEW PANELS */
+.view { display:none; }
+.view.active { display:block; }
+
+/* CALENDAR */
+.cal-header { display:flex; align-items:center; justify-content:space-between; margin-bottom:16px; flex-wrap:wrap; gap:8px; }
+.cal-nav { display:flex; align-items:center; gap:12px; }
+.cal-nav button { background:var(--card); border:1px solid var(--border); border-radius:var(--radius-sm); padding:6px 12px; font-size:18px; }
+.cal-nav h2 { font-size:18px; font-weight:700; min-width:200px; text-align:center; }
+.cal-grid { display:grid; grid-template-columns:60px repeat(7,1fr); background:var(--card); border-radius:var(--radius); box-shadow:var(--shadow); overflow:hidden; border:1px solid var(--border); }
+.cal-day-header { padding:12px 8px; text-align:center; font-size:12px; font-weight:700; text-transform:uppercase; color:var(--text-light); border-bottom:2px solid var(--border); background:var(--bg); }
+.cal-day-header.today { color:var(--primary); }
+.cal-time { padding:4px 8px; text-align:right; font-size:11px; color:var(--text-light); border-right:1px solid var(--border); height:48px; display:flex; align-items:flex-start; justify-content:flex-end; }
+.cal-cell { border:1px solid var(--border); border-top:none; border-left:none; height:48px; position:relative; cursor:pointer; transition:background .15s; }
+.cal-cell:hover { background:var(--primary-light); }
+.cal-block { position:absolute; left:2px; right:2px; border-radius:4px; padding:2px 6px; font-size:11px; font-weight:600; color:#fff; cursor:grab; z-index:10; overflow:hidden; line-height:1.3; box-shadow:0 1px 3px rgba(0,0,0,.2); transition:box-shadow .15s; }
+.cal-block:hover { box-shadow:0 3px 8px rgba(0,0,0,.25); }
+.cal-block.dragging { opacity:.6; }
+
+/* PROJECTS LIST */
+.projects-grid { display:grid; grid-template-columns:repeat(auto-fill,minmax(320px,1fr)); gap:16px; }
+.project-card { background:var(--card); border-radius:var(--radius); padding:20px; box-shadow:var(--shadow); border-left:4px solid var(--primary); transition:transform .2s, box-shadow .2s; }
+.project-card:hover { transform:translateY(-2px); box-shadow:var(--shadow-lg); }
+.project-card h3 { font-size:16px; margin-bottom:4px; }
+.project-card .client { font-size:13px; color:var(--text-light); margin-bottom:12px; }
+.project-meta { display:flex; flex-wrap:wrap; gap:8px; margin-bottom:12px; }
+.tag { padding:3px 8px; border-radius:20px; font-size:11px; font-weight:600; }
+.tag-hours { background:#DBEAFE; color:#1D4ED8; }
+.tag-rate { background:#D1FAE5; color:#065F46; }
+.tag-deadline { background:#FEF3C7; color:#92400E; }
+.tag-warning { background:#FEE2E2; color:#991B1B; animation:pulse 2s infinite; }
+@keyframes pulse { 0%,100%{opacity:1} 50%{opacity:.7} }
+.progress-bar { height:8px; background:var(--border); border-radius:4px; overflow:hidden; margin:8px 0; }
+.progress-fill { height:100%; border-radius:4px; transition:width .5s; }
+.project-actions { display:flex; gap:6px; margin-top:12px; flex-wrap:wrap; }
+
+/* MODAL */
+.modal-overlay { position:fixed; inset:0; background:rgba(0,0,0,.4); z-index:200; display:none; align-items:center; justify-content:center; padding:16px; backdrop-filter:blur(4px); }
+.modal-overlay.open { display:flex; }
+.modal { background:var(--card); border-radius:var(--radius); padding:24px; width:100%; max-width:480px; max-height:90vh; overflow-y:auto; box-shadow:0 20px 60px rgba(0,0,0,.2); }
+.modal h2 { font-size:20px; margin-bottom:16px; }
+.form-group { margin-bottom:14px; }
+.form-group label { display:block; font-size:13px; font-weight:600; margin-bottom:4px; color:var(--text-light); }
+.form-group input, .form-group select, .form-group textarea { width:100%; padding:10px 12px; border:1px solid var(--border); border-radius:var(--radius-sm); font-size:14px; transition:border .2s; }
+.form-group input:focus, .form-group select:focus { outline:none; border-color:var(--primary); box-shadow:0 0 0 3px rgba(124,92,252,.15); }
+.form-row { display:grid; grid-template-columns:1fr 1fr; gap:12px; }
+.modal-actions { display:flex; gap:8px; justify-content:flex-end; margin-top:20px; }
+
+/* REPORTS */
+.report-summary { display:grid; grid-template-columns:repeat(auto-fit,minmax(200px,1fr)); gap:16px; margin-bottom:24px; }
+.stat-card { background:var(--card); border-radius:var(--radius); padding:20px; box-shadow:var(--shadow); text-align:center; }
+.stat-card .stat-value { font-size:28px; font-weight:800; color:var(--primary); }
+.stat-card .stat-label { font-size:13px; color:var(--text-light); margin-top:4px; }
+.report-table { width:100%; background:var(--card); border-radius:var(--radius); overflow:hidden; box-shadow:var(--shadow); border-collapse:collapse; }
+.report-table th { background:var(--bg); padding:12px 16px; text-align:left; font-size:12px; text-transform:uppercase; color:var(--text-light); font-weight:700; }
+.report-table td { padding:12px 16px; border-top:1px solid var(--border); font-size:14px; }
+
+/* SHARED VIEW */
+.shared-view { max-width:700px; margin:0 auto; }
+.shared-header { text-align:center; margin-bottom:32px; }
+.shared-header h1 { font-size:24px; }
+.shared-header p { color:var(--text-light); }
+
+/* WARNINGS PANEL */
+.warnings { margin-bottom:20px; }
+.warning-item { background:#FFF7ED; border:1px solid #FED7AA; border-radius:var(--radius-sm); padding:12px 16px; margin-bottom:8px; display:flex; align-items:center; gap:10px; font-size:14px; }
+.warning-item.critical { background:#FEF2F2; border-color:#FECACA; }
+
+/* COLORS */
+.color-0 { background:#7C5CFC; } .color-1 { background:#F59E0B; } .color-2 { background:#10B981; }
+.color-3 { background:#EF4444; } .color-4 { background:#3B82F6; } .color-5 { background:#EC4899; }
+.color-6 { background:#8B5CF6; } .color-7 { background:#06B6D4; } .color-8 { background:#F97316; }
+
+/* MOBILE */
+@media(max-width:768px) {
+  .nav-tabs { display:none; position:absolute; top:60px; left:0; right:0; background:var(--card); flex-direction:column; padding:8px; box-shadow:var(--shadow-lg); border-bottom:1px solid var(--border); }
+  .nav-tabs.open { display:flex; }
+  .hamburger { display:block; }
+  .main { padding:12px; }
+  .cal-grid { grid-template-columns:40px repeat(7,1fr); font-size:11px; }
+  .cal-time { font-size:9px; padding:2px 4px; }
+  .cal-day-header { padding:8px 2px; font-size:10px; }
+  .cal-cell { height:36px; }
+  .cal-block { font-size:9px; padding:1px 3px; }
+  .form-row { grid-template-columns:1fr; }
+  .report-table { font-size:12px; }
+  .report-table th, .report-table td { padding:8px; }
+}
+</style>
+</head>
+<body>
+
+<nav class="nav">
+  <div class="nav-logo"><span>📐</span> Nomi Planner</div>
+  <button class="hamburger" onclick="document.querySelector('.nav-tabs').classList.toggle('open')">☰</button>
+  <div class="nav-tabs">
+    <button class="nav-tab active" data-view="calendar">📅 Calendar</button>
+    <button class="nav-tab" data-view="projects">📋 Projects</button>
+    <button class="nav-tab" data-view="reports">📊 Reports</button>
+  </div>
+  <div class="nav-actions">
+    <button class="btn btn-primary" onclick="openProjectModal()">+ Project</button>
+  </div>
+</nav>
+
+<main class="main" id="app">
+  <!-- WARNINGS -->
+  <div class="warnings" id="warnings"></div>
+
+  <!-- CALENDAR VIEW -->
+  <div class="view active" id="view-calendar">
+    <div class="cal-header">
+      <div class="cal-nav">
+        <button onclick="changeWeek(-1)">‹</button>
+        <h2 id="cal-title"></h2>
+        <button onclick="changeWeek(1)">›</button>
+        <button class="btn btn-secondary btn-sm" onclick="goToday()">Today</button>
+      </div>
+    </div>
+    <div class="cal-grid" id="cal-grid"></div>
+  </div>
+
+  <!-- PROJECTS VIEW -->
+  <div class="view" id="view-projects">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px;flex-wrap:wrap;gap:8px">
+      <h2>Projects</h2>
+      <button class="btn btn-primary" onclick="openProjectModal()">+ New Project</button>
+    </div>
+    <div class="projects-grid" id="projects-grid"></div>
+  </div>
+
+  <!-- REPORTS VIEW -->
+  <div class="view" id="view-reports">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px;flex-wrap:wrap;gap:8px">
+      <h2>Monthly Report</h2>
+      <div style="display:flex;gap:8px;align-items:center">
+        <button onclick="changeReportMonth(-1)" class="btn btn-secondary btn-sm">‹</button>
+        <span id="report-month" style="font-weight:700;min-width:140px;text-align:center"></span>
+        <button onclick="changeReportMonth(1)" class="btn btn-secondary btn-sm">›</button>
+      </div>
+    </div>
+    <div class="report-summary" id="report-summary"></div>
+    <table class="report-table" id="report-table"></table>
+  </div>
+</main>
+
+<!-- PROJECT MODAL -->
+<div class="modal-overlay" id="project-modal">
+  <div class="modal">
+    <h2 id="modal-title">New Project</h2>
+    <input type="hidden" id="proj-id">
+    <div class="form-group"><label>Project Name</label><input id="proj-name" placeholder="e.g. Website Redesign"></div>
+    <div class="form-group"><label>Client Name</label><input id="proj-client" placeholder="e.g. Acme Corp"></div>
+    <div class="form-group"><label>Color</label>
+      <div id="proj-color-pick" style="display:flex;gap:6px;flex-wrap:wrap"></div>
+    </div>
+    <div class="form-group"><label>Pricing Model</label>
+      <select id="proj-type"><option value="fixed">Fixed Quote (total hours)</option><option value="hourly">Hourly (log as you go)</option></select>
+    </div>
+    <div class="form-row">
+      <div class="form-group"><label>Total Hours</label><input id="proj-hours" type="number" min="0" step="0.5" placeholder="e.g. 40"></div>
+      <div class="form-group"><label>Hourly Rate (€)</label><input id="proj-rate" type="number" min="0" step="5" placeholder="e.g. 85"></div>
+    </div>
+    <div class="form-group"><label>Deadline</label><input id="proj-deadline" type="date"></div>
+    <div class="form-group"><label>Notes</label><textarea id="proj-notes" rows="2" placeholder="Optional notes..."></textarea></div>
+    <div class="modal-actions">
+      <button class="btn btn-secondary" onclick="closeModal('project-modal')">Cancel</button>
+      <button class="btn btn-danger" id="proj-delete-btn" style="display:none" onclick="deleteProject()">Delete</button>
+      <button class="btn btn-primary" onclick="saveProject()">Save</button>
+    </div>
+  </div>
+</div>
+
+<!-- BLOCK MODAL -->
+<div class="modal-overlay" id="block-modal">
+  <div class="modal">
+    <h2>Plan Time Block</h2>
+    <input type="hidden" id="block-id">
+    <input type="hidden" id="block-day">
+    <input type="hidden" id="block-hour">
+    <div class="form-group"><label>Project</label><select id="block-project"></select></div>
+    <div class="form-row">
+      <div class="form-group"><label>Start Time</label><select id="block-start"></select></div>
+      <div class="form-group"><label>Duration (hours)</label>
+        <select id="block-duration">
+          <option value="0.5">30 min</option><option value="1" selected>1 hour</option><option value="1.5">1.5 hours</option>
+          <option value="2">2 hours</option><option value="3">3 hours</option><option value="4">4 hours</option>
+        </select>
+      </div>
+    </div>
+    <div class="form-group"><label>Description</label><input id="block-desc" placeholder="What will you work on?"></div>
+    <div class="form-group" style="display:flex;align-items:center;gap:8px">
+      <input type="checkbox" id="block-done"><label for="block-done" style="margin:0;cursor:pointer">Mark as completed</label>
+    </div>
+    <div class="modal-actions">
+      <button class="btn btn-secondary" onclick="closeModal('block-modal')">Cancel</button>
+      <button class="btn btn-danger" id="block-delete-btn" style="display:none" onclick="deleteBlock()">Delete</button>
+      <button class="btn btn-primary" onclick="saveBlock()">Save</button>
+    </div>
+  </div>
+</div>
+
+<!-- SHARE MODAL -->
+<div class="modal-overlay" id="share-modal">
+  <div class="modal">
+    <h2>📤 Share with Client</h2>
+    <p style="color:var(--text-light);margin-bottom:16px;font-size:14px">Send this link to your client so they can see project progress.</p>
+    <div class="form-group">
+      <input id="share-url" readonly style="background:var(--bg);font-size:13px" onclick="this.select()">
+    </div>
+    <div class="modal-actions">
+      <button class="btn btn-secondary" onclick="closeModal('share-modal')">Close</button>
+      <button class="btn btn-primary" onclick="copyShareLink()">📋 Copy Link</button>
+    </div>
+  </div>
+</div>
+
+<script>
+// ---- DATA ----
+const COLORS = ['#7C5CFC','#F59E0B','#10B981','#EF4444','#3B82F6','#EC4899','#8B5CF6','#06B6D4','#F97316'];
+let projects = JSON.parse(localStorage.getItem('nomi_projects')||'[]');
+let blocks = JSON.parse(localStorage.getItem('nomi_blocks')||'[]');
+let currentWeek = startOfWeek(new Date());
+let reportMonth = new Date();
+let selectedColor = 0;
+
+function save() {
+  localStorage.setItem('nomi_projects', JSON.stringify(projects));
+  localStorage.setItem('nomi_blocks', JSON.stringify(blocks));
+}
+function uid() { return Date.now().toString(36)+Math.random().toString(36).slice(2,8); }
+function startOfWeek(d) { const r=new Date(d); r.setHours(0,0,0,0); const day=r.getDay(); r.setDate(r.getDate()-(day===0?6:day-1)); return r; }
+function addDays(d,n) { const r=new Date(d); r.setDate(r.getDate()+n); return r; }
+function fmtDate(d) { return d.toISOString().slice(0,10); }
+function fmtDateShort(d) { return d.toLocaleDateString('en',{month:'short',day:'numeric'}); }
+function fmtMonth(d) { return d.toLocaleDateString('en',{month:'long',year:'numeric'}); }
+const DAYS = ['Mon','Tue','Wed','Thu','Fri','Sat','Sun'];
+const HOURS_START = 7, HOURS_END = 20;
+
+// ---- CHECK SHARED VIEW ----
+(function checkShared(){
+  const p = new URLSearchParams(location.search);
+  if(p.has('share')) {
+    try {
+      const data = JSON.parse(atob(p.get('share')));
+      document.getElementById('app').innerHTML = renderSharedView(data);
+      document.querySelector('.nav-tabs').style.display='none';
+      document.querySelector('.nav-actions').style.display='none';
+    } catch(e) { console.error('Invalid share link'); }
+  }
+})();
+
+function renderSharedView(data) {
+  const proj = data;
+  const pBlocks = blocks.filter(b=>b.projectId===proj.id);
+  const done = pBlocks.filter(b=>b.done).reduce((s,b)=>s+parseFloat(b.duration),0);
+  const planned = pBlocks.reduce((s,b)=>s+parseFloat(b.duration),0);
+  const pct = proj.hours>0?Math.min(100,Math.round(done/proj.hours*100)):0;
+  return `<div class="shared-view">
+    <div class="shared-header">
+      <div style="width:48px;height:48px;border-radius:12px;background:${COLORS[proj.colorIdx||0]};margin:0 auto 12px;display:flex;align-items:center;justify-content:center;color:#fff;font-size:20px">📐</div>
+      <h1>${proj.name}</h1>
+      <p>Client: ${proj.client} · ${proj.type==='fixed'?'Fixed Quote':'Hourly'}</p>
+    </div>
+    <div class="report-summary">
+      <div class="stat-card"><div class="stat-value">${done}h</div><div class="stat-label">Completed</div></div>
+      <div class="stat-card"><div class="stat-value">${proj.hours||'—'}h</div><div class="stat-label">Total Hours</div></div>
+      <div class="stat-card"><div class="stat-value">${pct}%</div><div class="stat-label">Progress</div></div>
+    </div>
+    ${proj.hours>0?`<div class="progress-bar" style="height:12px;margin:16px 0"><div class="progress-fill" style="width:${pct}%;background:${COLORS[proj.colorIdx||0]}"></div></div>`:''}
+    ${proj.deadline?`<p style="text-align:center;color:var(--text-light);margin-top:8px">📅 Deadline: ${new Date(proj.deadline).toLocaleDateString('en',{weekday:'long',year:'numeric',month:'long',day:'numeric'})}</p>`:''}
+    <p style="text-align:center;color:var(--text-light);margin-top:24px;font-size:13px">Powered by Nomi Planner</p>
+  </div>`;
+}
+
+// ---- NAV ----
+document.querySelectorAll('.nav-tab').forEach(t=>{
+  t.addEventListener('click',()=>{
+    document.querySelectorAll('.nav-tab').forEach(x=>x.classList.remove('active'));
+    document.querySelectorAll('.view').forEach(x=>x.classList.remove('active'));
+    t.classList.add('active');
+    document.getElementById('view-'+t.dataset.view).classList.add('active');
+    document.querySelector('.nav-tabs').classList.remove('open');
+    if(t.dataset.view==='calendar') renderCalendar();
+    if(t.dataset.view==='projects') renderProjects();
+    if(t.dataset.view==='reports') renderReports();
+  });
+});
+
+// ---- WARNINGS ----
+function renderWarnings() {
+  const el = document.getElementById('warnings');
+  const warns = [];
+  const now = new Date();
+  projects.forEach(p=>{
+    const pBlocks = blocks.filter(b=>b.projectId===p.id);
+    const done = pBlocks.filter(b=>b.done).reduce((s,b)=>s+parseFloat(b.duration),0);
+    const remaining = (p.hours||0)-done;
+    if(p.type==='fixed' && p.hours && remaining <= p.hours*0.1 && remaining > 0) {
+      warns.push({critical:false, msg:`⚠️ <b>${p.name}</b>: Only ${remaining}h remaining out of ${p.hours}h`});
+    }
+    if(p.type==='fixed' && remaining <= 0 && p.hours) {
+      warns.push({critical:true, msg:`🚨 <b>${p.name}</b>: Hours exceeded! ${done}h used of ${p.hours}h`});
+    }
+    if(p.deadline) {
+      const dl = new Date(p.deadline);
+      const daysLeft = Math.ceil((dl-now)/(1000*60*60*24));
+      if(daysLeft < 0) warns.push({critical:true, msg:`🚨 <b>${p.name}</b>: Deadline passed ${Math.abs(daysLeft)} days ago!`});
+      else if(daysLeft <= 7) warns.push({critical:false, msg:`⏰ <b>${p.name}</b>: Deadline in ${daysLeft} day${daysLeft===1?'':'s'}`});
+    }
+  });
+  el.innerHTML = warns.map(w=>`<div class="warning-item ${w.critical?'critical':''}">${w.msg}</div>`).join('');
+}
+
+// ---- CALENDAR ----
+function renderCalendar() {
+  const grid = document.getElementById('cal-grid');
+  const weekEnd = addDays(currentWeek,6);
+  document.getElementById('cal-title').textContent = `${fmtDateShort(currentWeek)} — ${fmtDateShort(weekEnd)}, ${weekEnd.getFullYear()}`;
+  
+  const today = fmtDate(new Date());
+  let html = '<div class="cal-day-header"></div>';
+  for(let d=0;d<7;d++){
+    const date = addDays(currentWeek,d);
+    const isToday = fmtDate(date)===today;
+    html += `<div class="cal-day-header ${isToday?'today':''}">${DAYS[d]}<br>${date.getDate()}</div>`;
+  }
+  
+  for(let h=HOURS_START;h<HOURS_END;h++){
+    html += `<div class="cal-time">${String(h).padStart(2,'0')}:00</div>`;
+    for(let d=0;d<7;d++){
+      const date = fmtDate(addDays(currentWeek,d));
+      html += `<div class="cal-cell" data-date="${date}" data-hour="${h}" onclick="openBlockModal('${date}',${h})"></div>`;
+    }
+  }
+  grid.innerHTML = html;
+  
+  // Render blocks
+  blocks.forEach(b=>{
+    const date = b.date;
+    const hour = parseFloat(b.startHour);
+    const dur = parseFloat(b.duration);
+    const cell = grid.querySelector(`.cal-cell[data-date="${date}"][data-hour="${Math.floor(hour)}"]`);
+    if(!cell) return;
+    const proj = projects.find(p=>p.id===b.projectId);
+    if(!proj) return;
+    const top = (hour % 1) * 48;
+    const height = dur * 48 - 2;
+    const div = document.createElement('div');
+    div.className = `cal-block`;
+    div.style.cssText = `top:${top}px;height:${height}px;background:${COLORS[proj.colorIdx||0]};${b.done?'opacity:.6;text-decoration:line-through':''}`;
+    div.innerHTML = `${proj.name}${b.desc?' · '+b.desc:''}`;
+    div.onclick = (e)=>{ e.stopPropagation(); openBlockModal(date, hour, b.id); };
+    
+    // Drag
+    div.draggable = true;
+    div.addEventListener('dragstart',(e)=>{
+      e.dataTransfer.setData('blockId',b.id);
+      div.classList.add('dragging');
+    });
+    div.addEventListener('dragend',()=>div.classList.remove('dragging'));
+    cell.appendChild(div);
+  });
+  
+  // Drop targets
+  grid.querySelectorAll('.cal-cell').forEach(cell=>{
+    cell.addEventListener('dragover',e=>e.preventDefault());
+    cell.addEventListener('drop',e=>{
+      e.preventDefault();
+      const bid = e.dataTransfer.getData('blockId');
+      const block = blocks.find(b=>b.id===bid);
+      if(block){
+        block.date = cell.dataset.date;
+        block.startHour = parseInt(cell.dataset.hour);
+        save(); renderCalendar(); renderWarnings();
+      }
+    });
+  });
+}
+
+function changeWeek(dir) { currentWeek = addDays(currentWeek, dir*7); renderCalendar(); }
+function goToday() { currentWeek = startOfWeek(new Date()); renderCalendar(); }
+
+// ---- PROJECTS ----
+function renderProjects() {
+  const grid = document.getElementById('projects-grid');
+  if(!projects.length) { grid.innerHTML='<p style="color:var(--text-light);grid-column:1/-1;text-align:center;padding:40px">No projects yet. Click "+ Project" to get started!</p>'; return; }
+  grid.innerHTML = projects.map(p=>{
+    const pBlocks = blocks.filter(b=>b.projectId===p.id);
+    const done = pBlocks.filter(b=>b.done).reduce((s,b)=>s+parseFloat(b.duration),0);
+    const planned = pBlocks.reduce((s,b)=>s+parseFloat(b.duration),0);
+    const pct = p.hours>0?Math.min(100,Math.round(done/p.hours*100)):0;
+    const earned = p.type==='fixed'?(p.hours*p.rate):(done*p.rate);
+    return `<div class="project-card" style="border-left-color:${COLORS[p.colorIdx||0]}">
+      <h3>${p.name}</h3>
+      <div class="client">${p.client||'No client'}</div>
+      <div class="project-meta">
+        <span class="tag tag-hours">${done}h / ${p.hours||'∞'}h</span>
+        <span class="tag tag-rate">€${p.rate||0}/h</span>
+        ${p.deadline?`<span class="tag tag-deadline">📅 ${p.deadline}</span>`:''}
+        <span class="tag" style="background:${p.type==='fixed'?'#EDE9FE':'#DBEAFE'};color:${p.type==='fixed'?'#5B3FD4':'#1D4ED8'}">${p.type==='fixed'?'Fixed':'Hourly'}</span>
+      </div>
+      ${p.hours>0?`<div class="progress-bar"><div class="progress-fill" style="width:${pct}%;background:${COLORS[p.colorIdx||0]}"></div></div>
+      <div style="display:flex;justify-content:space-between;font-size:12px;color:var(--text-light)"><span>${pct}% complete</span><span>${(p.hours-done).toFixed(1)}h remaining</span></div>`:''}
+      <div style="font-size:14px;font-weight:600;margin-top:8px;color:var(--success)">€${earned.toLocaleString()} ${p.type==='fixed'?'total':'earned'}</div>
+      <div class="project-actions">
+        <button class="btn btn-secondary btn-sm" onclick="openProjectModal('${p.id}')">✏️ Edit</button>
+        <button class="btn btn-secondary btn-sm" onclick="shareProject('${p.id}')">📤 Share</button>
+      </div>
+    </div>`;
+  }).join('');
+}
+
+// ---- PROJECT MODAL ----
+function openProjectModal(id) {
+  const modal = document.getElementById('project-modal');
+  const proj = id ? projects.find(p=>p.id===id) : null;
+  document.getElementById('modal-title').textContent = proj ? 'Edit Project' : 'New Project';
+  document.getElementById('proj-id').value = proj ? proj.id : '';
+  document.getElementById('proj-name').value = proj ? proj.name : '';
+  document.getElementById('proj-client').value = proj ? proj.client : '';
+  document.getElementById('proj-type').value = proj ? proj.type : 'fixed';
+  document.getElementById('proj-hours').value = proj ? proj.hours : '';
+  document.getElementById('proj-rate').value = proj ? proj.rate : '';
+  document.getElementById('proj-deadline').value = proj ? proj.deadline : '';
+  document.getElementById('proj-notes').value = proj ? proj.notes||'' : '';
+  document.getElementById('proj-delete-btn').style.display = proj ? 'block' : 'none';
+  selectedColor = proj ? proj.colorIdx||0 : projects.length % COLORS.length;
+  renderColorPicker();
+  modal.classList.add('open');
+}
+
+function renderColorPicker() {
+  document.getElementById('proj-color-pick').innerHTML = COLORS.map((c,i)=>
+    `<div onclick="selectedColor=${i};renderColorPicker()" style="width:28px;height:28px;border-radius:50%;background:${c};cursor:pointer;border:3px solid ${i===selectedColor?'var(--text)':'transparent'};transition:.15s"></div>`
+  ).join('');
+}
+
+function saveProject() {
+  const id = document.getElementById('proj-id').value;
+  const data = {
+    name: document.getElementById('proj-name').value.trim(),
+    client: document.getElementById('proj-client').value.trim(),
+    type: document.getElementById('proj-type').value,
+    hours: parseFloat(document.getElementById('proj-hours').value)||0,
+    rate: parseFloat(document.getElementById('proj-rate').value)||0,
+    deadline: document.getElementById('proj-deadline').value,
+    notes: document.getElementById('proj-notes').value.trim(),
+    colorIdx: selectedColor
+  };
+  if(!data.name) return alert('Please enter a project name');
+  if(id) {
+    const idx = projects.findIndex(p=>p.id===id);
+    if(idx>=0) projects[idx] = {...projects[idx], ...data};
+  } else {
+    projects.push({id:uid(), ...data});
+  }
+  save(); closeModal('project-modal'); renderAll();
+}
+
+function deleteProject() {
+  const id = document.getElementById('proj-id').value;
+  if(!confirm('Delete this project and all its time blocks?')) return;
+  projects = projects.filter(p=>p.id!==id);
+  blocks = blocks.filter(b=>b.projectId!==id);
+  save(); closeModal('project-modal'); renderAll();
+}
+
+// ---- BLOCK MODAL ----
+function openBlockModal(date, hour, blockId) {
+  const modal = document.getElementById('block-modal');
+  const block = blockId ? blocks.find(b=>b.id===blockId) : null;
+  
+  // Project select
+  const sel = document.getElementById('block-project');
+  sel.innerHTML = projects.map(p=>`<option value="${p.id}">${p.name} (${p.client})</option>`).join('');
+  if(!projects.length) { alert('Create a project first!'); return; }
+  
+  // Time select
+  const startSel = document.getElementById('block-start');
+  startSel.innerHTML = '';
+  for(let h=HOURS_START;h<HOURS_END;h++){
+    for(let m=0;m<60;m+=30){
+      const val = h+m/60;
+      startSel.innerHTML += `<option value="${val}">${String(h).padStart(2,'0')}:${String(m).padStart(2,'0')}</option>`;
+    }
+  }
+  
+  document.getElementById('block-id').value = block ? block.id : '';
+  document.getElementById('block-day').value = date;
+  document.getElementById('block-project').value = block ? block.projectId : projects[0].id;
+  startSel.value = block ? block.startHour : hour;
+  document.getElementById('block-duration').value = block ? block.duration : '1';
+  document.getElementById('block-desc').value = block ? block.desc||'' : '';
+  document.getElementById('block-done').checked = block ? block.done : false;
+  document.getElementById('block-delete-btn').style.display = block ? 'block' : 'none';
+  modal.classList.add('open');
+}
+
+function saveBlock() {
+  const id = document.getElementById('block-id').value;
+  const data = {
+    projectId: document.getElementById('block-project').value,
+    date: document.getElementById('block-day').value,
+    startHour: parseFloat(document.getElementById('block-start').value),
+    duration: parseFloat(document.getElementById('block-duration').value),
+    desc: document.getElementById('block-desc').value.trim(),
+    done: document.getElementById('block-done').checked
+  };
+  if(id) {
+    const idx = blocks.findIndex(b=>b.id===id);
+    if(idx>=0) blocks[idx] = {...blocks[idx], ...data};
+  } else {
+    blocks.push({id:uid(), ...data});
+  }
+  save(); closeModal('block-modal'); renderAll();
+}
+
+function deleteBlock() {
+  const id = document.getElementById('block-id').value;
+  if(!confirm('Delete this time block?')) return;
+  blocks = blocks.filter(b=>b.id!==id);
+  save(); closeModal('block-modal'); renderAll();
+}
+
+// ---- SHARE ----
+function shareProject(id) {
+  const proj = projects.find(p=>p.id===id);
+  if(!proj) return;
+  const encoded = btoa(JSON.stringify(proj));
+  const url = location.origin+location.pathname+'?share='+encoded;
+  document.getElementById('share-url').value = url;
+  document.getElementById('share-modal').classList.add('open');
+}
+function copyShareLink() {
+  const input = document.getElementById('share-url');
+  input.select();
+  navigator.clipboard.writeText(input.value).then(()=>{ input.style.background='#D1FAE5'; setTimeout(()=>input.style.background='var(--bg)',1000); });
+}
+
+// ---- REPORTS ----
+function renderReports() {
+  const month = reportMonth.getMonth(), year = reportMonth.getFullYear();
+  document.getElementById('report-month').textContent = fmtMonth(reportMonth);
+  
+  const monthBlocks = blocks.filter(b=>{
+    const d = new Date(b.date);
+    return d.getMonth()===month && d.getFullYear()===year;
+  });
+  
+  const totalHours = monthBlocks.filter(b=>b.done).reduce((s,b)=>s+parseFloat(b.duration),0);
+  const plannedHours = monthBlocks.reduce((s,b)=>s+parseFloat(b.duration),0);
+  const totalRevenue = monthBlocks.filter(b=>b.done).reduce((s,b)=>{
+    const p = projects.find(x=>x.id===b.projectId);
+    return s + (p ? parseFloat(b.duration)*p.rate : 0);
+  },0);
+  const activeProjects = [...new Set(monthBlocks.map(b=>b.projectId))].length;
+  
+  document.getElementById('report-summary').innerHTML = `
+    <div class="stat-card"><div class="stat-value">${totalHours}h</div><div class="stat-label">Hours Completed</div></div>
+    <div class="stat-card"><div class="stat-value">${plannedHours}h</div><div class="stat-label">Hours Planned</div></div>
+    <div class="stat-card"><div class="stat-value">€${totalRevenue.toLocaleString()}</div><div class="stat-label">Revenue</div></div>
+    <div class="stat-card"><div class="stat-value">${activeProjects}</div><div class="stat-label">Active Projects</div></div>
+  `;
+  
+  // Per-client breakdown
+  const byClient = {};
+  monthBlocks.forEach(b=>{
+    const p = projects.find(x=>x.id===b.projectId);
+    if(!p) return;
+    const key = p.client||'No Client';
+    if(!byClient[key]) byClient[key]={client:key,projects:{},done:0,planned:0,revenue:0};
+    byClient[key].planned += parseFloat(b.duration);
+    if(b.done) { byClient[key].done += parseFloat(b.duration); byClient[key].revenue += parseFloat(b.duration)*p.rate; }
+    byClient[key].projects[p.name] = true;
+  });
+  
+  const rows = Object.values(byClient);
+  document.getElementById('report-table').innerHTML = rows.length ? `
+    <thead><tr><th>Client</th><th>Projects</th><th>Planned</th><th>Completed</th><th>Revenue</th></tr></thead>
+    <tbody>${rows.map(r=>`<tr><td><b>${r.client}</b></td><td>${Object.keys(r.projects).join(', ')}</td><td>${r.planned}h</td><td>${r.done}h</td><td>€${r.revenue.toLocaleString()}</td></tr>`).join('')}</tbody>
+  ` : '<tbody><tr><td style="padding:40px;text-align:center;color:var(--text-light)">No data for this month</td></tr></tbody>';
+}
+
+function changeReportMonth(dir) { reportMonth.setMonth(reportMonth.getMonth()+dir); renderReports(); }
+
+// ---- UTILS ----
+function closeModal(id) { document.getElementById(id).classList.remove('open'); }
+document.querySelectorAll('.modal-overlay').forEach(m=>{
+  m.addEventListener('click',e=>{ if(e.target===m) m.classList.remove('open'); });
+});
+
+function renderAll() { renderCalendar(); renderProjects(); renderReports(); renderWarnings(); }
+
+// ---- DEMO DATA ----
+if(!projects.length) {
+  const demoProjects = [
+    {id:uid(),name:'Website Redesign',client:'Bakkerij Jansen',type:'fixed',hours:40,rate:85,deadline:'2026-03-15',colorIdx:0,notes:'Complete redesign of bakery website'},
+    {id:uid(),name:'Brand Identity',client:'Studio Verde',type:'fixed',hours:20,rate:95,deadline:'2026-02-28',colorIdx:1,notes:'Logo + brand guidelines'},
+    {id:uid(),name:'Monthly Retainer',client:'TechFlow BV',type:'hourly',hours:0,rate:75,deadline:'',colorIdx:2,notes:'Ongoing design support'}
+  ];
+  projects = demoProjects;
+  
+  const today = new Date();
+  const mon = startOfWeek(today);
+  const demoBlocks = [
+    {id:uid(),projectId:projects[0].id,date:fmtDate(mon),startHour:9,duration:2,desc:'Wireframes homepage',done:true},
+    {id:uid(),projectId:projects[0].id,date:fmtDate(mon),startHour:13,duration:1.5,desc:'Design mockups',done:true},
+    {id:uid(),projectId:projects[1].id,date:fmtDate(addDays(mon,1)),startHour:10,duration:3,desc:'Logo concepts',done:true},
+    {id:uid(),projectId:projects[2].id,date:fmtDate(addDays(mon,2)),startHour:9,duration:1,desc:'Weekly sync call',done:false},
+    {id:uid(),projectId:projects[0].id,date:fmtDate(addDays(mon,2)),startHour:11,duration:2,desc:'Product pages',done:false},
+    {id:uid(),projectId:projects[1].id,date:fmtDate(addDays(mon,3)),startHour:9,duration:4,desc:'Brand guidelines doc',done:false},
+    {id:uid(),projectId:projects[2].id,date:fmtDate(addDays(mon,4)),startHour:14,duration:2,desc:'Newsletter design',done:false},
+  ];
+  blocks = demoBlocks;
+  save();
+}
+
+renderAll();
+</script>
+</body>
+</html>
